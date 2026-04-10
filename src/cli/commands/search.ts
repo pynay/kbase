@@ -12,73 +12,7 @@
 
 import type { Command } from "commander";
 import { resolveKnowledgeDir, readAllEntries } from "../../core/store.js";
-import type { KnowledgeEntry } from "../../core/types.js";
-
-// ---------------------------------------------------------------------------
-// Matching
-// ---------------------------------------------------------------------------
-
-interface SearchHit {
-  entry: KnowledgeEntry;
-  field: string;   // which field matched first — used as a snippet label
-  snippet: string; // a short context window around the match
-}
-
-/**
- * Return true if `haystack` contains `needle` (case-insensitive).
- * Both strings are already lowercased by the caller to avoid redundant
- * work inside the inner loop.
- */
-function contains(haystack: string, needleLower: string): boolean {
-  return haystack.toLowerCase().includes(needleLower);
-}
-
-/**
- * Extract a short snippet around the first match of `needleLower` in `text`.
- * Falls back to the truncated start of the text if the match isn't found
- * (which happens when the match came from a list field joined elsewhere).
- */
-function makeSnippet(text: string, needleLower: string, width = 80): string {
-  const idx = text.toLowerCase().indexOf(needleLower);
-  if (idx === -1) {
-    return text.length > width ? text.slice(0, width) + "…" : text;
-  }
-  const start = Math.max(0, idx - Math.floor(width / 3));
-  const end = Math.min(text.length, start + width);
-  const prefix = start > 0 ? "…" : "";
-  const suffix = end < text.length ? "…" : "";
-  return prefix + text.slice(start, end).replace(/\s+/g, " ").trim() + suffix;
-}
-
-/**
- * Check one entry for a match and, if found, return a SearchHit describing
- * the first field that hit. Field order is tuned to prefer the most
- * "summary-like" fields so the snippet is maximally informative.
- */
-function matchEntry(
-  entry: KnowledgeEntry,
-  needleLower: string
-): SearchHit | null {
-  // Tuples of [field name, text]. Order matters — the first match wins
-  // for snippet purposes. We put summary/decision first because they
-  // give the most context per character.
-  const fields: Array<[string, string]> = [
-    ["summary", entry.summary],
-    ["decision", entry.decision],
-    ["module", entry.module],
-    ["risk", entry.risk ?? ""],
-    ["alternatives", (entry.alternatives ?? []).join("\n")],
-    ["assumptions", (entry.assumptions ?? []).join("\n")],
-    ["tags", (entry.tags ?? []).join(" ")],
-  ];
-
-  for (const [name, text] of fields) {
-    if (text && contains(text, needleLower)) {
-      return { entry, field: name, snippet: makeSnippet(text, needleLower) };
-    }
-  }
-  return null;
-}
+import { matchEntry, type SearchHit } from "../../core/search.js";
 
 // ---------------------------------------------------------------------------
 // Output helpers
