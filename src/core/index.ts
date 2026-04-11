@@ -160,6 +160,26 @@ export async function getFiles(
 // ---------------------------------------------------------------------------
 
 /**
+ * Rebuild every derived artifact from the current knowledge entries:
+ * the four _graph/ JSON indexes plus the human-readable index.md.
+ *
+ * Single source of truth for "what counts as a full rebuild" — callers
+ * (write_knowledge, kb reindex) all route through this, so adding a
+ * future derived artifact means updating one function, not N call sites.
+ *
+ * Reads entries once and passes them through to both stages to avoid a
+ * second disk walk.
+ */
+export async function rebuildAll(
+  knowledgeDir: string,
+  entries?: KnowledgeEntry[]
+): Promise<void> {
+  const allEntries = entries ?? await readAllEntries(knowledgeDir);
+  await buildIndexes(knowledgeDir, allEntries);
+  await generateIndexMd(knowledgeDir, allEntries);
+}
+
+/**
  * Regenerate .knowledge/index.md — a human-readable overview of the
  * knowledge base. Lists each module with its entry count and dependencies.
  */

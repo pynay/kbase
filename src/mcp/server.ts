@@ -18,7 +18,7 @@ import {
 } from "@modelcontextprotocol/sdk/types.js";
 
 import { readAllEntries, writeEntry, resolveKnowledgeDir } from "../core/store.js";
-import { buildIndexes, getDependencies, getModules, getFiles } from "../core/index.js";
+import { rebuildAll, getDependencies, getModules, getFiles } from "../core/index.js";
 import type { EntryFrontmatter, KnowledgeEntry } from "../core/types.js";
 
 // ---------------------------------------------------------------------------
@@ -236,10 +236,9 @@ async function handleWriteKnowledge(args: Record<string, unknown>) {
 
   const { id, path } = await writeEntry(knowledgeDir, entryInput);
 
-  // Rebuild _graph/ so query_deps sees the new entry on the very next call.
-  // See plan: there's no `kb reindex` implemented today, so auto-reindex is
-  // the only way to keep the dependency graph consistent with the markdown.
-  await buildIndexes(knowledgeDir);
+  // Rebuild every derived artifact (graph indexes + index.md) so both
+  // query_deps and read_knowledge see the new entry on the very next call.
+  await rebuildAll(knowledgeDir);
 
   return jsonContent({ id, path });
 }

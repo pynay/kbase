@@ -13,7 +13,13 @@ import fg from "fast-glob";
 import type { KnowledgeEntry, EntryFrontmatter } from "./types.js";
 
 // Internal directories inside .knowledge/ that are not entry files.
-const INTERNAL_DIRS = ["_graph"];
+//  - _graph:  derived JSON indexes, rebuilt from entries
+//  - _cache:  per-developer disposable cache (gitignored)
+const INTERNAL_DIRS = ["_graph", "_cache"];
+
+// Internal top-level files inside .knowledge/ that are not entry files.
+//  - index.md: auto-generated human-readable index, rebuilt from entries
+const INTERNAL_FILES = ["index.md"];
 
 // ---------------------------------------------------------------------------
 // Directory resolution
@@ -181,16 +187,24 @@ export async function readEntry(filePath: string): Promise<KnowledgeEntry> {
 
 /**
  * List all entry .md file paths in .knowledge/, excluding internal dirs
- * like _graph/. Uses fast-glob for efficient recursive matching.
+ * (_graph, _cache) and internal top-level files (index.md). Uses
+ * fast-glob for efficient recursive matching.
+ *
+ * The ignore list mixes directory-glob patterns with specific file
+ * paths because index.md is a single file at the root and needs an
+ * exact-path ignore rather than a dir-wildcard.
  */
 export async function listEntryPaths(
   knowledgeDir: string
 ): Promise<string[]> {
-  const ignore = INTERNAL_DIRS.map((d) => path.join(knowledgeDir, d));
+  const ignore = [
+    ...INTERNAL_DIRS.map((d) => path.join(knowledgeDir, d) + "/**"),
+    ...INTERNAL_FILES.map((f) => path.join(knowledgeDir, f)),
+  ];
   const paths = await fg("**/*.md", {
     cwd: knowledgeDir,
     absolute: true,
-    ignore: ignore.map((p) => p + "/**"),
+    ignore,
   });
   return paths.sort();
 }
