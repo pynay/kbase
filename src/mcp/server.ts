@@ -2,7 +2,7 @@
  * server.ts — MCP server entry point.
  *
  * Exposes three tools over the Model Context Protocol:
- *   - read_knowledge: substring search over all knowledge entries
+ *   - read_knowledge: target-based lookup (module or file) against the _graph/ indexes
  *   - write_knowledge: add a new knowledge entry (auto-reindexes _graph/)
  *   - query_deps: query the module dependency graph
  *
@@ -18,9 +18,8 @@ import {
 } from "@modelcontextprotocol/sdk/types.js";
 
 import { readAllEntries, writeEntry, resolveKnowledgeDir } from "../core/store.js";
-import { buildIndexes, getDependencies } from "../core/index.js";
-import { matchEntry } from "../core/search.js";
-import type { KnowledgeEntry } from "../core/types.js";
+import { buildIndexes, getDependencies, getModules, getFiles } from "../core/index.js";
+import type { EntryFrontmatter, KnowledgeEntry } from "../core/types.js";
 
 // ---------------------------------------------------------------------------
 // Tool definitions
@@ -35,22 +34,29 @@ const TOOLS = [
   {
     name: "read_knowledge",
     description:
-      "Substring search across all knowledge entries. Matches case-insensitively " +
-      "against summary, decision, module, risk, alternatives, assumptions, and tags. " +
-      "Returns hits sorted newest-first.",
+      "Read existing knowledge about a module or file. Call this before " +
+      "making changes to understand existing decisions, assumptions, and " +
+      "dependencies. Resolves the target against the _graph/ indexes: " +
+      "first as a module name, then as a file path. Returns an empty array " +
+      "if nothing matches.",
     inputSchema: {
       type: "object",
       properties: {
-        query: {
+        target: {
           type: "string",
-          description: "Substring to search for (case-insensitive, non-empty).",
+          description:
+            "Module name (e.g. 'auth/session') or file path (e.g. 'src/auth/session.ts').",
         },
-        limit: {
-          type: "number",
-          description: "Maximum number of hits to return. Defaults to 20.",
+        depth: {
+          type: "string",
+          enum: ["summary", "full"],
+          description:
+            "summary = frontmatter-only per entry (cheap scan, omits decision body). " +
+            "full = complete entry including decision, alternatives, assumptions, risk. " +
+            "Defaults to summary.",
         },
       },
-      required: ["query"],
+      required: ["target"],
     },
   },
   {
@@ -132,39 +138,69 @@ function errorContent(message: string) {
 // Tool handlers
 // ---------------------------------------------------------------------------
 
+/**
+ * Project a full KnowledgeEntry down to its frontmatter — everything except
+ * the free-form body sections. This is the `depth: "summary"` shape: enough
+ * for an agent to decide which entries to fetch in full, without paying for
+ * decision/alternatives/assumptions/risk on the scan pass.
+ */
+function toFrontmatter(entry: KnowledgeEntry): EntryFrontmatter {
+  const { decision: _d, alternatives: _a, assumptions: _as, risk: _r, ...rest } = entry;
+  return rest;
+}
+
 async function handleReadKnowledge(args: Record<string, unknown>) {
-  const query = args.query;
-  if (typeof query !== "string" || query.length === 0) {
-    return errorContent("`query` must be a non-empty string.");
+  const target = args.target;
+  if (typeof target !== "string" || target.length === 0) {
+    return errorContent("`target` must be a non-empty string.");
   }
-  const limit = typeof args.limit === "number" && args.limit > 0 ? args.limit : 20;
+
+  // Default to "summary" — the spec's default and the cheaper of the two.
+  // Anything other than the two enum values silently falls back to summary
+  // rather than erroring, so a slightly-wrong caller still gets useful data.
+  const depth: "summary" | "full" = args.depth === "full" ? "full" : "summary";
 
   const knowledgeDir = await resolveKnowledgeDir();
-  const entries = await readAllEntries(knowledgeDir);
 
-  const needleLower = query.toLowerCase();
-  const hits = [];
-  for (const entry of entries) {
-    const hit = matchEntry(entry, needleLower);
-    if (hit) hits.push(hit);
+  // Two-step lookup per the spec: module first, then file. We don't try both
+  // and merge — if `target` is "auth/session" and that's a module name, we
+  // want the module's entries, not every entry that happens to touch a file
+  // path containing "auth/session".
+  const modules = await getModules(knowledgeDir);
+  let entryIds: string[] | null = null;
+  if (Object.prototype.hasOwnProperty.call(modules, target)) {
+    entryIds = modules[target];
+  } else {
+    const files = await getFiles(knowledgeDir);
+    if (Object.prototype.hasOwnProperty.call(files, target)) {
+      entryIds = files[target];
+    }
   }
 
-  // Newest first — mirrors the CLI's `kb search` ordering so both transports
-  // return results in the same order for the same query.
-  hits.sort((a, b) => {
-    if (!a.entry.timestamp) return 1;
-    if (!b.entry.timestamp) return -1;
-    return b.entry.timestamp.localeCompare(a.entry.timestamp);
+  // No match is a valid answer, not an error — lets agents call this
+  // speculatively to check whether any knowledge exists before writing.
+  if (entryIds === null || entryIds.length === 0) {
+    return jsonContent([]);
+  }
+
+  // Resolve ids → full entries by walking all entries and filtering. At the
+  // scale this tool targets (hundreds of entries), the O(n) walk is cheaper
+  // than maintaining a separate id→path index. If this becomes a hot path
+  // later, extend buildIndexes() with an id map.
+  const idSet = new Set(entryIds);
+  const allEntries = await readAllEntries(knowledgeDir);
+  const matched = allEntries.filter((e) => idSet.has(e.id));
+
+  // Newest first — same ordering the previous substring-search handler used,
+  // and what an agent scanning summaries will expect.
+  matched.sort((a, b) => {
+    if (!a.timestamp) return 1;
+    if (!b.timestamp) return -1;
+    return b.timestamp.localeCompare(a.timestamp);
   });
 
-  const payload = hits.slice(0, limit).map((h) => ({
-    id: h.entry.id,
-    module: h.entry.module,
-    summary: h.entry.summary,
-    timestamp: h.entry.timestamp,
-    field: h.field,
-    snippet: h.snippet,
-  }));
+  const payload =
+    depth === "full" ? matched : matched.map(toFrontmatter);
 
   return jsonContent(payload);
 }
