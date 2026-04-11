@@ -180,8 +180,26 @@ export async function rebuildAll(
 }
 
 /**
- * Regenerate .knowledge/index.md — a human-readable overview of the
- * knowledge base. Lists each module with its entry count and dependencies.
+ * Regenerate .knowledge/index.md — a human-readable (and LLM-scannable)
+ * overview of the knowledge base.
+ *
+ * Format follows the spec in CLAUDE.md:
+ *   - Header: title, last-updated timestamp, total entries, module count
+ *   - ## Modules — grouped list, newest entry first within each module,
+ *                  each line is `summary (YYYY-MM-DD) — \`id\``
+ *   - ## Assumptions (all) — flat roll-up of every assumption across
+ *                  every entry, prefixed with its module
+ *
+ * The entry id on each line is kept (the spec example doesn't show it,
+ * but it's useful for read_knowledge target lookups — an agent scanning
+ * this file can jump directly from summary to fetch-by-id).
+ *
+ * Sort order:
+ *   - Modules: alphabetical, for stable diffs.
+ *   - Entries within a module: newest-first by timestamp, so the most
+ *     recent decisions float to the top of each section.
+ *   - Assumptions: grouped by module alphabetically, preserving the
+ *     order entries are emitted within a module.
  */
 export async function generateIndexMd(
   knowledgeDir: string,
@@ -196,25 +214,58 @@ export async function generateIndexMd(
     byModule.get(e.module)!.push(e);
   }
 
+  // Sort modules alphabetically for stable output across rebuilds.
+  const sortedModules = [...byModule.keys()].sort();
+
+  // Sort each module's entries newest-first. Mutate the grouped lists so
+  // the assumptions pass below sees the same order as the module section.
+  for (const mod of sortedModules) {
+    byModule.get(mod)!.sort((a, b) =>
+      (b.timestamp ?? "").localeCompare(a.timestamp ?? "")
+    );
+  }
+
   const lines: string[] = [
-    "# Knowledge Base Index",
+    "# System Knowledge Base",
     "",
-    `> Auto-generated — ${allEntries.length} entries across ${byModule.size} modules.`,
+    `Last updated: ${new Date().toISOString()}`,
+    `Total entries: ${allEntries.length}`,
+    `Modules: ${byModule.size}`,
     "",
   ];
 
-  // Sort modules alphabetically for stable output.
-  const sortedModules = [...byModule.keys()].sort();
-
-  for (const mod of sortedModules) {
-    const moduleEntries = byModule.get(mod)!;
-    lines.push(`## ${mod}`);
+  // Modules section. Empty knowledge bases skip it entirely so the file
+  // stays clean rather than showing an orphan header.
+  if (byModule.size > 0) {
+    lines.push("## Modules");
     lines.push("");
-
-    for (const e of moduleEntries) {
-      const deps = e.depends_on?.length ? ` (depends on: ${e.depends_on.join(", ")})` : "";
-      lines.push(`- **${e.summary}** — \`${e.id}\`${deps}`);
+    for (const mod of sortedModules) {
+      lines.push(`### ${mod}`);
+      for (const e of byModule.get(mod)!) {
+        // Extract just the date portion of the ISO timestamp — the full
+        // timestamp is noise in a scan view, the date is what matters.
+        const date = e.timestamp ? e.timestamp.slice(0, 10) : "unknown";
+        lines.push(`- ${e.summary} (${date}) — \`${e.id}\``);
+      }
+      lines.push("");
     }
+  }
+
+  // Assumptions roll-up. Walking per-module (in the same sort order)
+  // means related assumptions cluster, which makes the list easier to
+  // scan than a chronological dump.
+  const assumptionLines: string[] = [];
+  for (const mod of sortedModules) {
+    for (const e of byModule.get(mod)!) {
+      for (const a of e.assumptions ?? []) {
+        assumptionLines.push(`- ${mod}: ${a}`);
+      }
+    }
+  }
+  if (assumptionLines.length > 0) {
+    lines.push("## Assumptions (all)");
+    lines.push("");
+    lines.push(...assumptionLines);
     lines.push("");
   }
 

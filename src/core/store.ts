@@ -74,6 +74,21 @@ export async function resolveKnowledgeDir(
 const BODY_SECTIONS = ["Decision", "Alternatives", "Assumptions", "Risk"] as const;
 
 /**
+ * Coerce a frontmatter timestamp value into an ISO 8601 string.
+ *
+ * gray-matter delegates YAML parsing to js-yaml, which auto-converts
+ * ISO-shaped date strings into JavaScript Date objects. Our type says
+ * `timestamp: string`, and every downstream consumer (sort by
+ * `localeCompare`, slice the date portion, serialize to JSON) assumes
+ * string. Coercing here is the one place that enforces the invariant.
+ */
+function normalizeTimestamp(raw: unknown): string {
+  if (typeof raw === "string") return raw;
+  if (raw instanceof Date) return raw.toISOString();
+  return "";
+}
+
+/**
  * Parse a single markdown file (with YAML frontmatter) into a KnowledgeEntry.
  *
  * Uses gray-matter for frontmatter extraction, then splits the remaining
@@ -116,7 +131,7 @@ export function parseEntry(filePath: string, raw: string): KnowledgeEntry {
     id: fm.id ?? path.basename(filePath, ".md"),
     module: fm.module ?? "",
     summary: fm.summary ?? "",
-    timestamp: fm.timestamp ?? "",
+    timestamp: normalizeTimestamp(fm.timestamp),
     agent: fm.agent ?? "",
     files: fm.files ?? [],
     affects: fm.affects,
