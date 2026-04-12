@@ -56,6 +56,12 @@ function ensureDepNode(idx: DependencyIndex, mod: string): void {
  *   3. dependencies.json — module → { depends_on, depended_on_by }
  *   4. assumptions.json  — module → [{ assumption, entry_id }]
  *
+ * `depends_on` and `affects` are treated as dual declarations of the
+ * same underlying edge: "X affects Y" is equivalent to "Y depends_on X".
+ * Whichever side an entry writer chose, the graph ends up with the same
+ * edge, and an edge declared from both sides collapses to one (not two)
+ * via the .includes() dedup guards below.
+ *
  * If `entries` is not provided, reads them from disk via readAllEntries().
  */
 export async function buildIndexes(
@@ -83,8 +89,11 @@ export async function buildIndexes(
       files[f].push(entry.id);
     }
 
-    // dependency index — register both directions
+    // dependency index — register both directions, from either side
     ensureDepNode(deps, mod);
+
+    // depends_on: entry's module consumes each listed module.
+    // Edge direction: mod → dep (mod depends on dep).
     if (entry.depends_on) {
       for (const dep of entry.depends_on) {
         if (!deps[mod].depends_on.includes(dep)) {
@@ -93,6 +102,24 @@ export async function buildIndexes(
         ensureDepNode(deps, dep);
         if (!deps[dep].depended_on_by.includes(mod)) {
           deps[dep].depended_on_by.push(mod);
+        }
+      }
+    }
+
+    // affects: entry's module impacts each listed module. This is the
+    // inverse declaration of the same edge — "mod affects aff" means
+    // "aff depends_on mod". Walk the list and produce the identical
+    // pair of mutations, with mod and aff swapped. The .includes()
+    // dedup guards below mean an edge declared from both sides (in
+    // two separate entries) still lands as one edge, not two.
+    if (entry.affects) {
+      for (const aff of entry.affects) {
+        ensureDepNode(deps, aff);
+        if (!deps[aff].depends_on.includes(mod)) {
+          deps[aff].depends_on.push(mod);
+        }
+        if (!deps[mod].depended_on_by.includes(aff)) {
+          deps[mod].depended_on_by.push(aff);
         }
       }
     }
