@@ -1,3 +1,4 @@
+// Persistence layer: reads and writes .knowledge/ markdown entries with YAML frontmatter.
 /**
  * store.ts — Read/write .knowledge/ markdown files.
  *

@@ -1,0 +1,8 @@
+{
+  "mcp/server": [
+    {
+      "assumption": "_graph/ indexes are always fresh via rebuildAll after every write_knowledge call",
+      "entry_id": "adccdb34-7589-4226-b24a-22b2e268d5cd"
+    }
+  ]
+}

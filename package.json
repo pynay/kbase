@@ -1,7 +1,7 @@
 {
-  "name": "kbase",
-  "version": "0.1.0",
-  "description": "Codebase knowledge layer for AI coding agents",
+  "name": "kbase-mcp",
+  "version": "0.1.0-beta.0",
+  "description": "Codebase knowledge layer for AI coding agents — MCP server + CLI",
   "type": "module",
   "bin": {
     "kb": "./dist/cli/index.js",
@@ -10,8 +10,12 @@
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch",
+    "prepublishOnly": "npm run build",
     "start:mcp": "node dist/mcp/server.js",
     "start:cli": "node dist/cli/index.js"
+  },
+  "engines": {
+    "node": ">=18"
   },
   "files": [
     "dist/"
@@ -20,7 +24,9 @@
     "mcp",
     "coding-agent",
     "knowledge-base",
-    "comprehension-debt"
+    "comprehension-debt",
+    "claude",
+    "cursor"
   ],
   "license": "MIT",
   "dependencies": {
