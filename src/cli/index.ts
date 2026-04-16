@@ -17,6 +17,7 @@ import { register as registerStale } from "./commands/stale.js";
 import { register as registerInit } from "./commands/init.js";
 import { register as registerReindex } from "./commands/reindex.js";
 import { register as registerHookRead } from "./commands/hook-read.js";
+import { register as registerHookWrite } from "./commands/hook-write.js";
 
 const program = new Command();
 
@@ -36,5 +37,6 @@ registerStale(program);
 registerInit(program);
 registerReindex(program);
 registerHookRead(program);
+registerHookWrite(program);
 
 program.parse();
