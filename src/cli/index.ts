@@ -16,6 +16,7 @@ import { register as registerSearch } from "./commands/search.js";
 import { register as registerStale } from "./commands/stale.js";
 import { register as registerInit } from "./commands/init.js";
 import { register as registerReindex } from "./commands/reindex.js";
+import { register as registerHookRead } from "./commands/hook-read.js";
 
 const program = new Command();
 
@@ -34,5 +35,6 @@ registerSearch(program);
 registerStale(program);
 registerInit(program);
 registerReindex(program);
+registerHookRead(program);
 
 program.parse();
