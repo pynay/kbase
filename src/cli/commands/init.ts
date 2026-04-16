@@ -9,7 +9,11 @@
 
 import type { Command } from "commander";
 import fs from "node:fs/promises";
+import { existsSync } from "node:fs";
 import path from "node:path";
+
+const KBASE_HOOK_READ = "kb hook-read";
+const KBASE_HOOK_WRITE = "kb hook-write";
 
 /**
  * Placeholder body for a fresh index.md. `kb reindex` and `write_knowledge`
@@ -103,13 +107,51 @@ async function addToGitignore(cwd: string, pattern: string): Promise<boolean> {
 }
 
 /**
+ * Additively merge kbase hook entries into .claude/settings.json.
+ * Returns true if hooks were added, false if already present.
+ */
+export async function mergeHooksIntoSettings(settingsPath: string): Promise<boolean> {
+  const raw = await fs.readFile(settingsPath, "utf-8");
+  const settings = JSON.parse(raw);
+
+  if (!settings.hooks) settings.hooks = {};
+  if (!settings.hooks.UserPromptSubmit) settings.hooks.UserPromptSubmit = [];
+  if (!settings.hooks.Stop) settings.hooks.Stop = [];
+
+  const hasReadHook = settings.hooks.UserPromptSubmit.some(
+    (h: any) => h.hooks?.some((inner: any) => inner.command?.includes(KBASE_HOOK_READ)),
+  );
+  const hasWriteHook = settings.hooks.Stop.some(
+    (h: any) => h.hooks?.some((inner: any) => inner.command?.includes(KBASE_HOOK_WRITE)),
+  );
+
+  if (hasReadHook && hasWriteHook) return false;
+
+  if (!hasReadHook) {
+    settings.hooks.UserPromptSubmit.push({
+      hooks: [{ type: "command", command: KBASE_HOOK_READ }],
+    });
+  }
+
+  if (!hasWriteHook) {
+    settings.hooks.Stop.push({
+      hooks: [{ type: "command", command: KBASE_HOOK_WRITE }],
+    });
+  }
+
+  await fs.writeFile(settingsPath, JSON.stringify(settings, null, 2) + "\n");
+  return true;
+}
+
+/**
  * Register the `kb init` subcommand.
  */
 export function register(program: Command): void {
   program
     .command("init")
     .description("Initialize kbase in the current directory")
-    .action(async () => {
+    .option("--no-hooks", "Skip Claude Code hook installation")
+    .action(async (_opts: Record<string, unknown>) => {
       const cwd = process.cwd();
       const knowledgeDir = path.join(cwd, ".knowledge");
 
@@ -142,6 +184,28 @@ export function register(program: Command): void {
       // query_deps without running kb reindex first.
       const added = await addToGitignore(cwd, ".knowledge/_cache/");
       if (added) console.log("  Added .knowledge/_cache/ to .gitignore");
+
+      // Hook wiring
+      if (!_opts.noHooks) {
+        const settingsPath = path.join(cwd, ".claude", "settings.json");
+        if (existsSync(settingsPath)) {
+          const wired = await mergeHooksIntoSettings(settingsPath);
+          if (wired) {
+            console.log("  Wired kbase hooks into .claude/settings.json");
+          } else {
+            console.log("  kbase hooks already present in .claude/settings.json");
+          }
+        } else {
+          console.log("\n  No .claude/settings.json found.");
+          console.log("  To enable kbase hooks, add to your .claude/settings.json:\n");
+          console.log(JSON.stringify({
+            hooks: {
+              UserPromptSubmit: [{ hooks: [{ type: "command", command: KBASE_HOOK_READ }] }],
+              Stop: [{ hooks: [{ type: "command", command: KBASE_HOOK_WRITE }] }],
+            },
+          }, null, 2));
+        }
+      }
 
       console.log(POST_INIT_MESSAGE);
     });

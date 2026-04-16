@@ -155,6 +155,7 @@ export function register(program: Command): void {
     .description("Ask a natural-language question about the codebase")
     .option("--deep", "Also read source files referenced by relevant entries")
     .option("--sources", "Show which knowledge entries were used to form the answer")
+    .option("--json", "Output gathered context as JSON without calling the LLM")
     .action(async (question: string, options: Record<string, unknown>) => {
       const knowledgeDir = await resolveKnowledgeDir();
 
@@ -198,10 +199,30 @@ export function register(program: Command): void {
         return;
       }
 
+      const repoRoot = path.dirname(knowledgeDir);
+
+      if (options.json) {
+        console.log(
+          JSON.stringify(
+            {
+              question,
+              entries: ranked.map((e) => ({
+                id: e.id,
+                module: e.module,
+                summary: e.summary,
+                files: e.files,
+              })),
+            },
+            null,
+            2
+          )
+        );
+        return;
+      }
+
       // --deep: also pull source files. This is opt-in because it
       // trades significant token budget (whole source files) for
       // grounding in real code, which the user may or may not want.
-      const repoRoot = path.dirname(knowledgeDir);
       const sourceBlocks = options.deep
         ? await readReferencedSources(ranked, repoRoot)
         : [];
