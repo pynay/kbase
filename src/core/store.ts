@@ -268,3 +268,19 @@ export async function writeEntry(
 
   return { path: filePath, id };
 }
+
+/**
+ * Schema-level quality floor for knowledge entry decisions.
+ * Throws if the decision text is below the minimum length.
+ */
+export function validateDecisionLength(
+  decision: string,
+  minLen: number = 80,
+): void {
+  if (decision.length < minLen) {
+    throw new Error(
+      `decision must be at least ${minLen} characters (got ${decision.length}). ` +
+        `If this change isn't worth a detailed explanation, it may not be worth a knowledge entry.`,
+    );
+  }
+}
