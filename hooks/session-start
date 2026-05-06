@@ -1,0 +1,38 @@
+#!/usr/bin/env bash
+# SessionStart hook — reads using-kbase SKILL.md and emits as additionalContext.
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+PLUGIN_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+
+# Only fire if .knowledge/ exists in cwd or any ancestor.
+dir="$(pwd)"
+while [ "$dir" != "/" ]; do
+  if [ -d "${dir}/.knowledge" ]; then
+    break
+  fi
+  dir="$(dirname "$dir")"
+done
+if [ "$dir" = "/" ]; then
+  exit 0
+fi
+
+# Read the meta-skill content.
+content="$(cat "${PLUGIN_ROOT}/skills/using-kbase/SKILL.md" 2>/dev/null || echo "")"
+if [ -z "$content" ]; then
+  exit 0
+fi
+
+# Escape for JSON embedding.
+escape_for_json() {
+  local s="$1"
+  s="${s//\\/\\\\}"
+  s="${s//\"/\\\"}"
+  s="${s//$'\n'/\\n}"
+  s="${s//$'\r'/\\r}"
+  s="${s//$'\t'/\\t}"
+  printf '%s' "$s"
+}
+
+escaped="$(escape_for_json "$content")"
+printf '{"hookSpecificOutput":{"additionalContext":"%s"}}' "$escaped"
