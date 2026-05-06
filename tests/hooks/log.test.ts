@@ -34,13 +34,13 @@ describe("appendHookLog", () => {
 
   it("appends multiple entries as newline-delimited JSON", async () => {
     await appendHookLog(dir, { ts: "a", event: "hook-read", gate: "skip" });
-    await appendHookLog(dir, { ts: "b", event: "hook-write", gate: "proceed" });
+    await appendHookLog(dir, { ts: "b", event: "hook-session-start", gate: "proceed" });
 
     const lines = (await readFile(join(dir, "_cache", "hook.log"), "utf-8"))
       .trim()
       .split("\n");
     expect(lines).toHaveLength(2);
     expect(JSON.parse(lines[0]).event).toBe("hook-read");
-    expect(JSON.parse(lines[1]).event).toBe("hook-write");
+    expect(JSON.parse(lines[1]).event).toBe("hook-session-start");
   });
 });
