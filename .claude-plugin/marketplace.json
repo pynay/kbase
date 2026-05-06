@@ -8,7 +8,7 @@
   "plugins": [
     {
       "name": "kbase",
-      "description": "Knowledge layer for AI coding agents",
+      "description": "Knowledge layer for AI coding agents — captures and surfaces why code is the way it is",
       "version": "0.2.0",
       "source": "./",
       "author": {
