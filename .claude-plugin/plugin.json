@@ -1,0 +1,13 @@
+{
+  "name": "kbase",
+  "description": "Knowledge layer for AI coding agents — captures and surfaces why code is the way it is",
+  "version": "0.2.0",
+  "author": {
+    "name": "Pranay",
+    "email": "pranay.yalaman@gmail.com"
+  },
+  "homepage": "https://github.com/pynay/kbase",
+  "repository": "https://github.com/pynay/kbase",
+  "license": "MIT",
+  "keywords": ["knowledge-base", "claude-code", "comprehension", "decisions"]
+}
