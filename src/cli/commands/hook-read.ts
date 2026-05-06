@@ -11,12 +11,9 @@ export function register(program: Command): void {
         const stdin = await readStdin();
         const payload: UserPromptSubmitPayload = JSON.parse(stdin);
 
-        const apiKey = process.env.ANTHROPIC_API_KEY ?? process.env.OPENAI_API_KEY ?? null;
-
         const result = await processReadHook({
           prompt: payload.prompt,
           cwd: payload.cwd,
-          apiKey,
         });
 
         if (result) {

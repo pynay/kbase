@@ -19,7 +19,6 @@ async function main(): Promise<void> {
     const result = await processReadHook({
       prompt: payload.prompt,
       cwd: payload.cwd,
-      apiKey: null, // classifier dropped — no API key path
     });
     if (result) {
       const response: HookContextResponse = {
