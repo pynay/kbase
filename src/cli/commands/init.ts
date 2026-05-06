@@ -14,6 +14,7 @@ import path from "node:path";
 
 const KBASE_HOOK_READ = "kb hook-read";
 const KBASE_HOOK_WRITE = "kb hook-write";
+const KBASE_HOOK_SESSION_START = "kb hook-session-start";
 
 /**
  * Placeholder body for a fresh index.md. `kb reindex` and `write_knowledge`
@@ -29,15 +30,21 @@ const INDEX_PLACEHOLDER = `# Knowledge Base Index
 `;
 
 /**
- * MCP + agent wiring instructions. Printed at the end of `kb init` so
- * users see the next step without needing to read the README.
+ * Post-init instructions. The hook-first path is the default — Claude
+ * Code users get automatic injection and writing once hooks are wired
+ * (which `kb init` does for them when .claude/settings.json exists).
+ * MCP setup is shown as a fallback for non-CC agents.
  */
 const POST_INIT_MESSAGE = `
   kbase initialized.
 
-  Next steps:
+  If hooks were wired into .claude/settings.json above, you're done —
+  Claude Code will read entries before each prompt and record decisions
+  after each meaningful turn automatically. No CLAUDE.md changes
+  required. Set ANTHROPIC_API_KEY so the writer subprocess can run.
 
-  1. Wire the MCP server into your agent.
+  For non-Claude-Code agents (Cursor, etc.), wire the MCP server
+  manually:
 
        Claude Code:
          claude mcp add kbase -- kb-mcp
@@ -49,17 +56,13 @@ const POST_INIT_MESSAGE = `
            }
          }
 
-  2. Tell your agent to use it. Add to CLAUDE.md / .cursorrules:
+  Those agents call read_knowledge / write_knowledge / query_deps
+  voluntarily — see the README for instructions to add to .cursorrules
+  / AGENTS.md.
 
-       This project uses kbase. Before making changes, call
-       read_knowledge for the relevant module or file. After making
-       non-trivial changes, call write_knowledge to record what you
-       decided and why. Before large refactors, call query_deps to
-       check the blast radius.
-
-  3. On the first write_knowledge call, the _graph/ indexes and
-     index.md will be generated automatically. You can also run
-     \`kb reindex\` at any time to rebuild them from the markdown.
+  On the first write the _graph/ indexes and index.md will be
+  generated. You can also run \`kb reindex\` at any time to rebuild
+  them from the markdown.
 `;
 
 /**
@@ -117,6 +120,7 @@ export async function mergeHooksIntoSettings(settingsPath: string): Promise<bool
   if (!settings.hooks) settings.hooks = {};
   if (!settings.hooks.UserPromptSubmit) settings.hooks.UserPromptSubmit = [];
   if (!settings.hooks.Stop) settings.hooks.Stop = [];
+  if (!settings.hooks.SessionStart) settings.hooks.SessionStart = [];
 
   const hasReadHook = settings.hooks.UserPromptSubmit.some(
     (h: any) => h.hooks?.some((inner: any) => inner.command?.includes(KBASE_HOOK_READ)),
@@ -124,8 +128,11 @@ export async function mergeHooksIntoSettings(settingsPath: string): Promise<bool
   const hasWriteHook = settings.hooks.Stop.some(
     (h: any) => h.hooks?.some((inner: any) => inner.command?.includes(KBASE_HOOK_WRITE)),
   );
+  const hasSessionStartHook = settings.hooks.SessionStart.some(
+    (h: any) => h.hooks?.some((inner: any) => inner.command?.includes(KBASE_HOOK_SESSION_START)),
+  );
 
-  if (hasReadHook && hasWriteHook) return false;
+  if (hasReadHook && hasWriteHook && hasSessionStartHook) return false;
 
   if (!hasReadHook) {
     settings.hooks.UserPromptSubmit.push({
@@ -136,6 +143,12 @@ export async function mergeHooksIntoSettings(settingsPath: string): Promise<bool
   if (!hasWriteHook) {
     settings.hooks.Stop.push({
       hooks: [{ type: "command", command: KBASE_HOOK_WRITE }],
+    });
+  }
+
+  if (!hasSessionStartHook) {
+    settings.hooks.SessionStart.push({
+      hooks: [{ type: "command", command: KBASE_HOOK_SESSION_START }],
     });
   }
 
@@ -202,6 +215,7 @@ export function register(program: Command): void {
             hooks: {
               UserPromptSubmit: [{ hooks: [{ type: "command", command: KBASE_HOOK_READ }] }],
               Stop: [{ hooks: [{ type: "command", command: KBASE_HOOK_WRITE }] }],
+              SessionStart: [{ hooks: [{ type: "command", command: KBASE_HOOK_SESSION_START }] }],
             },
           }, null, 2));
         }

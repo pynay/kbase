@@ -26,8 +26,10 @@ describe("mergeHooksIntoSettings", () => {
     const settings = JSON.parse(await readFile(settingsPath, "utf-8"));
     expect(settings.hooks.UserPromptSubmit).toHaveLength(1);
     expect(settings.hooks.Stop).toHaveLength(1);
+    expect(settings.hooks.SessionStart).toHaveLength(1);
     expect(settings.hooks.UserPromptSubmit[0].hooks[0].command).toContain("kb hook-read");
     expect(settings.hooks.Stop[0].hooks[0].command).toContain("kb hook-write");
+    expect(settings.hooks.SessionStart[0].hooks[0].command).toContain("kb hook-session-start");
   });
 
   it("preserves existing hooks and adds kbase hooks", async () => {
@@ -55,5 +57,6 @@ describe("mergeHooksIntoSettings", () => {
     const settings = JSON.parse(await readFile(settingsPath, "utf-8"));
     expect(settings.hooks.UserPromptSubmit).toHaveLength(1);
     expect(settings.hooks.Stop).toHaveLength(1);
+    expect(settings.hooks.SessionStart).toHaveLength(1);
   });
 });

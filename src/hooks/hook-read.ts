@@ -111,7 +111,11 @@ export async function processReadHook(input: ReadHookInput): Promise<ReadHookOut
     if (entries.length === 0) return null;
 
     const additionalContext = [
-      "## Relevant kbase knowledge entries\n",
+      "## Relevant kbase knowledge entries (REQUIRED CONTEXT)\n",
+      "The following entries describe load-bearing decisions about the files",
+      "you're about to work with. You MUST consult them before making changes.",
+      "If your plan contradicts an entry, surface that explicitly to the user —",
+      "do not silently override.\n",
       ...entries.map((e) => formatEntryForPrompt(e) + "\n---\n"),
     ].join("\n");
 

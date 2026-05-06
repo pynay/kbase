@@ -49,6 +49,25 @@ describe("processReadHook", () => {
     expect(result!.additionalContext).toContain("Session tokens use JWT");
   });
 
+  it("uses imperative wording so injected context isn't ignored", async () => {
+    await writeEntry(knowledgeDir, {
+      module: "auth/session",
+      summary: "Session tokens use JWT",
+      decision: "We chose JWT for session tokens because they are stateless and verifiable without a database lookup.",
+      files: ["src/auth/session.ts"],
+    });
+    await rebuildAll(knowledgeDir);
+
+    const result = await processReadHook({
+      prompt: "fix the bug in src/auth/session.ts",
+      cwd: projectDir,
+      apiKey: null,
+    });
+
+    expect(result).not.toBeNull();
+    expect(result!.additionalContext).toMatch(/REQUIRED CONTEXT|MUST/);
+  });
+
   it("caps output at 3 entries", async () => {
     for (let i = 0; i < 5; i++) {
       await writeEntry(knowledgeDir, {
