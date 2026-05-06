@@ -3,16 +3,12 @@ import { join } from "node:path";
 
 export interface HookLogEntry {
   ts: string;
-  event: "hook-read" | "hook-write" | "hook-session-start";
+  event: "hook-read" | "hook-session-start";
   gate: "proceed" | "skip";
   reason?: string;
   latency_ms?: number;
-  entries_written?: number;
   entries_injected?: number;
   resolution?: string;
-  model?: string;
-  input_tokens?: number;
-  output_tokens?: number;
 }
 
 export async function appendHookLog(
