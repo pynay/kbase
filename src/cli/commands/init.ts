@@ -9,7 +9,12 @@
 
 import type { Command } from "commander";
 import fs from "node:fs/promises";
+import { existsSync } from "node:fs";
 import path from "node:path";
+
+const KBASE_HOOK_READ = "kb hook-read";
+const KBASE_HOOK_WRITE = "kb hook-write";
+const KBASE_HOOK_SESSION_START = "kb hook-session-start";
 
 /**
  * Placeholder body for a fresh index.md. `kb reindex` and `write_knowledge`
@@ -25,15 +30,21 @@ const INDEX_PLACEHOLDER = `# Knowledge Base Index
 `;
 
 /**
- * MCP + agent wiring instructions. Printed at the end of `kb init` so
- * users see the next step without needing to read the README.
+ * Post-init instructions. The hook-first path is the default — Claude
+ * Code users get automatic injection and writing once hooks are wired
+ * (which `kb init` does for them when .claude/settings.json exists).
+ * MCP setup is shown as a fallback for non-CC agents.
  */
 const POST_INIT_MESSAGE = `
   kbase initialized.
 
-  Next steps:
+  If hooks were wired into .claude/settings.json above, you're done —
+  Claude Code will read entries before each prompt and record decisions
+  after each meaningful turn automatically. No CLAUDE.md changes
+  required. Set ANTHROPIC_API_KEY so the writer subprocess can run.
 
-  1. Wire the MCP server into your agent.
+  For non-Claude-Code agents (Cursor, etc.), wire the MCP server
+  manually:
 
        Claude Code:
          claude mcp add kbase -- kb-mcp
@@ -45,17 +56,13 @@ const POST_INIT_MESSAGE = `
            }
          }
 
-  2. Tell your agent to use it. Add to CLAUDE.md / .cursorrules:
+  Those agents call read_knowledge / write_knowledge / query_deps
+  voluntarily — see the README for instructions to add to .cursorrules
+  / AGENTS.md.
 
-       This project uses kbase. Before making changes, call
-       read_knowledge for the relevant module or file. After making
-       non-trivial changes, call write_knowledge to record what you
-       decided and why. Before large refactors, call query_deps to
-       check the blast radius.
-
-  3. On the first write_knowledge call, the _graph/ indexes and
-     index.md will be generated automatically. You can also run
-     \`kb reindex\` at any time to rebuild them from the markdown.
+  On the first write the _graph/ indexes and index.md will be
+  generated. You can also run \`kb reindex\` at any time to rebuild
+  them from the markdown.
 `;
 
 /**
@@ -103,13 +110,61 @@ async function addToGitignore(cwd: string, pattern: string): Promise<boolean> {
 }
 
 /**
+ * Additively merge kbase hook entries into .claude/settings.json.
+ * Returns true if hooks were added, false if already present.
+ */
+export async function mergeHooksIntoSettings(settingsPath: string): Promise<boolean> {
+  const raw = await fs.readFile(settingsPath, "utf-8");
+  const settings = JSON.parse(raw);
+
+  if (!settings.hooks) settings.hooks = {};
+  if (!settings.hooks.UserPromptSubmit) settings.hooks.UserPromptSubmit = [];
+  if (!settings.hooks.Stop) settings.hooks.Stop = [];
+  if (!settings.hooks.SessionStart) settings.hooks.SessionStart = [];
+
+  const hasReadHook = settings.hooks.UserPromptSubmit.some(
+    (h: any) => h.hooks?.some((inner: any) => inner.command?.includes(KBASE_HOOK_READ)),
+  );
+  const hasWriteHook = settings.hooks.Stop.some(
+    (h: any) => h.hooks?.some((inner: any) => inner.command?.includes(KBASE_HOOK_WRITE)),
+  );
+  const hasSessionStartHook = settings.hooks.SessionStart.some(
+    (h: any) => h.hooks?.some((inner: any) => inner.command?.includes(KBASE_HOOK_SESSION_START)),
+  );
+
+  if (hasReadHook && hasWriteHook && hasSessionStartHook) return false;
+
+  if (!hasReadHook) {
+    settings.hooks.UserPromptSubmit.push({
+      hooks: [{ type: "command", command: KBASE_HOOK_READ }],
+    });
+  }
+
+  if (!hasWriteHook) {
+    settings.hooks.Stop.push({
+      hooks: [{ type: "command", command: KBASE_HOOK_WRITE }],
+    });
+  }
+
+  if (!hasSessionStartHook) {
+    settings.hooks.SessionStart.push({
+      hooks: [{ type: "command", command: KBASE_HOOK_SESSION_START }],
+    });
+  }
+
+  await fs.writeFile(settingsPath, JSON.stringify(settings, null, 2) + "\n");
+  return true;
+}
+
+/**
  * Register the `kb init` subcommand.
  */
 export function register(program: Command): void {
   program
     .command("init")
     .description("Initialize kbase in the current directory")
-    .action(async () => {
+    .option("--no-hooks", "Skip Claude Code hook installation")
+    .action(async (_opts: Record<string, unknown>) => {
       const cwd = process.cwd();
       const knowledgeDir = path.join(cwd, ".knowledge");
 
@@ -142,6 +197,29 @@ export function register(program: Command): void {
       // query_deps without running kb reindex first.
       const added = await addToGitignore(cwd, ".knowledge/_cache/");
       if (added) console.log("  Added .knowledge/_cache/ to .gitignore");
+
+      // Hook wiring
+      if (!_opts.noHooks) {
+        const settingsPath = path.join(cwd, ".claude", "settings.json");
+        if (existsSync(settingsPath)) {
+          const wired = await mergeHooksIntoSettings(settingsPath);
+          if (wired) {
+            console.log("  Wired kbase hooks into .claude/settings.json");
+          } else {
+            console.log("  kbase hooks already present in .claude/settings.json");
+          }
+        } else {
+          console.log("\n  No .claude/settings.json found.");
+          console.log("  To enable kbase hooks, add to your .claude/settings.json:\n");
+          console.log(JSON.stringify({
+            hooks: {
+              UserPromptSubmit: [{ hooks: [{ type: "command", command: KBASE_HOOK_READ }] }],
+              Stop: [{ hooks: [{ type: "command", command: KBASE_HOOK_WRITE }] }],
+              SessionStart: [{ hooks: [{ type: "command", command: KBASE_HOOK_SESSION_START }] }],
+            },
+          }, null, 2));
+        }
+      }
 
       console.log(POST_INIT_MESSAGE);
     });
