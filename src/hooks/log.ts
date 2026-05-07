@@ -3,7 +3,7 @@ import { join } from "node:path";
 
 export interface HookLogEntry {
   ts: string;
-  event: "hook-read" | "hook-session-start";
+  event: "hook-read";
   gate: "proceed" | "skip";
   reason?: string;
   latency_ms?: number;
