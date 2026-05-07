@@ -1,3 +1,4 @@
 node_modules/
 .knowledge/
+docs/superpowers/
 *.tsbuildinfo
