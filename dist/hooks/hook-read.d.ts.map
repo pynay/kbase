@@ -1,0 +1,1 @@
+{"version":3,"file":"hook-read.d.ts","sourceRoot":"","sources":["../../src/hooks/hook-read.ts"],"names":[],"mappings":"AAOA,UAAU,aAAa;IACrB,MAAM,EAAE,MAAM,CAAC;IACf,GAAG,EAAE,MAAM,CAAC;CACb;AAED,UAAU,cAAc;IACtB,iBAAiB,EAAE,MAAM,CAAC;CAC3B;AAID,wBAAsB,eAAe,CAAC,KAAK,EAAE,aAAa,GAAG,OAAO,CAAC,cAAc,GAAG,IAAI,CAAC,CAwG1F"}

@@ -1,14 +1,13 @@
 import { findKnowledgeDir, readEntry, listEntryPaths } from "../core/store.js";
 import { getModules, getFiles } from "../core/index.js";
-import { formatEntryForPrompt } from "../cli/commands/_shared.js";
-import { extractExplicitPaths, classifyModules } from "./classifier.js";
+import { formatEntryForPrompt } from "../core/formatting.js";
+import { extractExplicitPaths } from "./path-extractor.js";
 import { appendHookLog } from "./log.js";
 import { loadHookConfig } from "./types.js";
 
 interface ReadHookInput {
   prompt: string;
   cwd: string;
-  apiKey: string | null;
 }
 
 interface ReadHookOutput {
@@ -68,18 +67,7 @@ export async function processReadHook(input: ReadHookInput): Promise<ReadHookOut
       }
     }
 
-    let resolution = "path-extraction";
-
-    // Step 2: If we didn't find enough, try the Haiku classifier
-    if (entryIds.size < 2 && input.apiKey) {
-      const classifiedModules = await classifyModules(input.apiKey, input.prompt, moduleNames);
-      for (const mod of classifiedModules) {
-        if (moduleIndex[mod]) {
-          for (const id of moduleIndex[mod]) entryIds.add(id);
-        }
-      }
-      if (classifiedModules.length > 0) resolution = "classifier";
-    }
+    const resolution = "path-extraction";
 
     if (entryIds.size === 0) {
       await appendHookLog(knowledgeDir, {

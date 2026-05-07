@@ -25,7 +25,6 @@ describe("processReadHook", () => {
     const result = await processReadHook({
       prompt: "fix the bug",
       cwd: "/nonexistent",
-      apiKey: null,
     });
     expect(result).toBeNull();
   });
@@ -42,7 +41,6 @@ describe("processReadHook", () => {
     const result = await processReadHook({
       prompt: "fix the bug in src/auth/session.ts",
       cwd: projectDir,
-      apiKey: null,
     });
 
     expect(result).not.toBeNull();
@@ -61,7 +59,6 @@ describe("processReadHook", () => {
     const result = await processReadHook({
       prompt: "fix the bug in src/auth/session.ts",
       cwd: projectDir,
-      apiKey: null,
     });
 
     expect(result).not.toBeNull();
@@ -82,7 +79,6 @@ describe("processReadHook", () => {
     const result = await processReadHook({
       prompt: "fix the bug in src/auth/session.ts",
       cwd: projectDir,
-      apiKey: null,
     });
 
     const entryCount = (result!.additionalContext.match(/---/g) || []).length;
