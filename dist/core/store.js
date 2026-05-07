@@ -45,17 +45,6 @@ export async function findKnowledgeDir(startDir = process.cwd()) {
         dir = parent;
     }
 }
-/**
- * Resolve the .knowledge/ directory or throw if not found.
- * Most commands call this at startup.
- */
-export async function resolveKnowledgeDir(startDir) {
-    const dir = await findKnowledgeDir(startDir);
-    if (!dir) {
-        throw new Error("No .knowledge/ directory found. Run `kb init` to create one.");
-    }
-    return dir;
-}
 // ---------------------------------------------------------------------------
 // Parse / serialize
 // ---------------------------------------------------------------------------

@@ -52,16 +52,4 @@ export interface ModuleIndex {
 export interface FileIndex {
     [filePath: string]: string[];
 }
-export interface LLMConfig {
-    provider: "anthropic" | "openai";
-    apiKey: string;
-    model: string;
-    baseUrl?: string;
-}
-export interface LLMRequest {
-    system: string;
-    prompt: string;
-    maxTokens?: number;
-    stream?: boolean;
-}
 //# sourceMappingURL=types.d.ts.map

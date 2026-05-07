@@ -14,11 +14,6 @@ import type { KnowledgeEntry } from "./types.js";
  */
 export declare function findKnowledgeDir(startDir?: string): Promise<string | null>;
 /**
- * Resolve the .knowledge/ directory or throw if not found.
- * Most commands call this at startup.
- */
-export declare function resolveKnowledgeDir(startDir?: string): Promise<string>;
-/**
  * Parse a single markdown file (with YAML frontmatter) into a KnowledgeEntry.
  *
  * Uses gray-matter for frontmatter extraction, then splits the remaining
