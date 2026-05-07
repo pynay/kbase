@@ -1,6 +1,6 @@
 {
-  "name": "kbase-mcp",
-  "version": "0.1.0-beta.0",
+  "name": "kbase",
+  "version": "0.2.0",
   "description": "Knowledge layer for AI coding agents — Claude Code plugin",
   "type": "module",
   "scripts": {
