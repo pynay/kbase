@@ -78,20 +78,3 @@ export interface FileIndex {
   [filePath: string]: string[];
 }
 
-// ---------------------------------------------------------------------------
-// LLM configuration
-// ---------------------------------------------------------------------------
-
-export interface LLMConfig {
-  provider: "anthropic" | "openai";
-  apiKey: string;
-  model: string;
-  baseUrl?: string;
-}
-
-export interface LLMRequest {
-  system: string;
-  prompt: string;
-  maxTokens?: number;
-  stream?: boolean;
-}
