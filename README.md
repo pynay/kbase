@@ -70,12 +70,13 @@ The plugin ships skills the agent invokes when their description matches:
 
 ## Configuration
 
-Two environment variables, both optional:
+One environment variable, optional:
 
 | Var | Default | Purpose |
 |---|---|---|
 | `KBASE_HOOKS_DISABLED` | unset | Set `1` to disable kbase hooks for this session |
-| `KBASE_HOOK_LOG` | `.knowledge/_cache/hook.log` | Override hook event log path |
+
+The hook event log lives at `.knowledge/_cache/hook.log`.
 
 No API key required. All LLM work runs inside your CC session.
 
