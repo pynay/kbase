@@ -10,7 +10,8 @@ to the agent automatically the next time you work on the same code.
 Knowledge lives as structured markdown files in a `.knowledge/` directory,
 versioned with git. No database, no vector store, no cloud, no API key.
 
-## What is comprehension debt?
+<details>
+<summary><strong>What is comprehension debt?</strong></summary>
 
 Technical debt is the cost of code being hard to *change*. Comprehension
 debt is the cost of code being hard to *understand* — specifically, the
@@ -29,13 +30,19 @@ Comprehension debt makes code dangerous to change. kbase reduces it by
 recording the *why* alongside the code, in the same workflow that
 produces and consumes both.
 
+</details>
+
 ## Install
 
-```bash
-# Add the kbase marketplace
-claude plugin marketplace add https://github.com/pynay/kbase
+Add the kbase marketplace:
 
-# Install kbase
+```bash
+claude plugin marketplace add https://github.com/pynay/kbase
+```
+
+Install the plugin:
+
+```bash
 claude plugin install kbase
 ```
 
