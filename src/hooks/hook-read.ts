@@ -1,6 +1,6 @@
 import { findKnowledgeDir, readEntry, listEntryPaths } from "../core/store.js";
 import { getModules, getFiles } from "../core/index.js";
-import { formatEntryForPrompt } from "../cli/commands/_shared.js";
+import { formatEntryForPrompt } from "../core/formatting.js";
 import { extractExplicitPaths } from "./path-extractor.js";
 import { appendHookLog } from "./log.js";
 import { loadHookConfig } from "./types.js";

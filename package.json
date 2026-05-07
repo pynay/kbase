@@ -3,14 +3,10 @@
   "version": "0.1.0-beta.0",
   "description": "Knowledge layer for AI coding agents — Claude Code plugin",
   "type": "module",
-  "bin": {
-    "kb": "./dist/cli/index.js"
-  },
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch",
     "prepublishOnly": "npm run build",
-    "start:cli": "node dist/cli/index.js",
     "test": "vitest run",
     "test:watch": "vitest"
   },
@@ -29,8 +25,6 @@
   ],
   "license": "MIT",
   "dependencies": {
-    "@anthropic-ai/sdk": "latest",
-    "commander": "latest",
     "fast-glob": "latest",
     "gray-matter": "latest",
     "uuid": "latest"
