@@ -1,0 +1,1 @@
+{"version":3,"file":"hook-session-start.d.ts","sourceRoot":"","sources":["../../src/hooks/hook-session-start.ts"],"names":[],"mappings":"AAIA,UAAU,qBAAqB;IAC7B,GAAG,EAAE,MAAM,CAAC;CACb;AAED,UAAU,sBAAsB;IAC9B,iBAAiB,EAAE,MAAM,CAAC;CAC3B;AA0BD,wBAAsB,uBAAuB,CAC3C,KAAK,EAAE,qBAAqB,GAC3B,OAAO,CAAC,sBAAsB,GAAG,IAAI,CAAC,CAqBxC"}

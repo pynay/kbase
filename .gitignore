@@ -1,4 +1,5 @@
 node_modules/
-dist/
 .knowledge/_cache/
+.knowledge/_graph/
+.knowledge/index.md
 *.tsbuildinfo
