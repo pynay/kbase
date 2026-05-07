@@ -28,26 +28,29 @@ That's the entire setup.
 ## What it does
 
 When you're working in a project that has a `.knowledge/` directory, kbase
-automatically:
+gives Claude Code three behaviors:
 
 1. **At session start** — injects a framing message telling the agent kbase
    is active and how to use injected entries.
 2. **Before each prompt** — extracts file paths from your prompt, looks
    them up in the knowledge index, and injects matching entries as
    `REQUIRED CONTEXT` for the agent to consult.
+3. **After non-obvious decisions** — the agent writes a knowledge entry
+   on its own using its built-in `Write` tool, mentions the entry path
+   in its response, and offers to remove it if you disagree. No slash
+   command required for the common case.
 
-You manually capture decisions when you want them recorded:
-
-3. **`/kb-capture`** — records a knowledge entry from the most recent
-   turn. The agent inspects the diff and conversation, decides whether a
-   recordable decision was made, and writes an entry only if so.
+Most decisions get captured without you doing anything — that's the
+point. The `/kb-capture` slash command is a manual escape hatch for
+when you want to record something the agent missed (often a decision
+you made conversationally without the agent editing code).
 
 ## Slash commands
 
 - `/kb-init` — set up `.knowledge/` in the current project
 - `/kb-ask <question>` — natural-language Q&A over recorded knowledge
 - `/kb-impact <file>` — blast radius analysis for a file or module
-- `/kb-capture` — record a decision from the recent turn
+- `/kb-capture` — manual escape hatch for capturing a decision the agent didn't auto-record
 
 ## Behavioral skills
 
